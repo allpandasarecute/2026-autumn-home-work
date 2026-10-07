@@ -15,10 +15,6 @@ import company.vk.edu.distrib.compute.Dao;
 class LinksHandler implements HttpHandler {
     private static final Logger log = LoggerFactory.getLogger(LinksHandler.class);
 
-    private static final String GET_METHOD = "GET";
-    private static final String POST_METHOD = "POST";
-    private static final String PUT_METHOD = "PUT";
-    private static final String DELETE_METHOD = "DELETE";
     private static final String COLLECTION_PATH = "/v0/links";
     private static final String ITEM_PREFIX = "/v0/links/";
     private static final String AUTHENTICATE_CHALLENGE = "Basic realm=\"url-shortener\"";
@@ -39,10 +35,10 @@ class LinksHandler implements HttpHandler {
             try {
                 dispatch(exchange);
             } catch (NoSuchElementException expected) {
-                HttpResponses.sendEmpty(exchange, 404);
+                HttpResponses.sendEmpty(exchange, HttpConstants.NOT_FOUND);
             } catch (IOException | RuntimeException e) {
                 log.error("Failed to handle links request", e);
-                HttpResponses.sendEmpty(exchange, 500);
+                HttpResponses.sendEmpty(exchange, HttpConstants.INTERNAL_SERVER_ERROR);
             }
         }
     }
@@ -50,7 +46,7 @@ class LinksHandler implements HttpHandler {
     private void dispatch(HttpExchange exchange) throws IOException {
         if (!authenticator.authenticate(exchange)) {
             exchange.getResponseHeaders().set("WWW-Authenticate", AUTHENTICATE_CHALLENGE);
-            HttpResponses.sendEmpty(exchange, 401);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNAUTHORIZED);
             return;
         }
         String path = exchange.getRequestURI().getPath();
@@ -60,58 +56,58 @@ class LinksHandler implements HttpHandler {
         }
         String id = path.substring(ITEM_PREFIX.length());
         switch (exchange.getRequestMethod()) {
-            case GET_METHOD -> send(exchange, id);
-            case PUT_METHOD -> replace(exchange, id);
-            case DELETE_METHOD -> remove(exchange, id);
-            default -> HttpResponses.sendEmpty(exchange, 405);
+            case HttpConstants.GET_METHOD -> send(exchange, id);
+            case HttpConstants.PUT_METHOD -> replace(exchange, id);
+            case HttpConstants.DELETE_METHOD -> remove(exchange, id);
+            default -> HttpResponses.sendEmpty(exchange, HttpConstants.METHOD_NOT_ALLOWED);
         }
     }
 
     private void create(HttpExchange exchange) throws IOException {
-        if (!POST_METHOD.equals(exchange.getRequestMethod())) {
-            HttpResponses.sendEmpty(exchange, 405);
+        if (!HttpConstants.POST_METHOD.equals(exchange.getRequestMethod())) {
+            HttpResponses.sendEmpty(exchange, HttpConstants.METHOD_NOT_ALLOWED);
             return;
         }
         String longLink = HttpResponses.readBody(exchange);
         if (!isValidLink(longLink)) {
-            HttpResponses.sendEmpty(exchange, 422);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNPROCESSABLE_CONTENT);
             return;
         }
         String id = Ids.generate();
         links.upsert(id, longLink);
-        HttpResponses.sendBody(exchange, 201, "http://localhost:%d/%s".formatted(port, id));
+        HttpResponses.sendBody(exchange, HttpConstants.CREATED, "http://localhost:%d/%s".formatted(port, id));
     }
 
     private void send(HttpExchange exchange, String id) throws IOException {
         if (!Ids.isValid(id)) {
-            HttpResponses.sendEmpty(exchange, 422);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNPROCESSABLE_CONTENT);
             return;
         }
-        HttpResponses.sendBody(exchange, 200, links.get(id));
+        HttpResponses.sendBody(exchange, HttpConstants.OK, links.get(id));
     }
 
     private void replace(HttpExchange exchange, String id) throws IOException {
         if (!Ids.isValid(id)) {
-            HttpResponses.sendEmpty(exchange, 422);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNPROCESSABLE_CONTENT);
             return;
         }
         String longLink = HttpResponses.readBody(exchange);
         if (!isValidLink(longLink)) {
-            HttpResponses.sendEmpty(exchange, 422);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNPROCESSABLE_CONTENT);
             return;
         }
         links.get(id);
         links.upsert(id, longLink);
-        HttpResponses.sendEmpty(exchange, 200);
+        HttpResponses.sendEmpty(exchange, HttpConstants.OK);
     }
 
     private void remove(HttpExchange exchange, String id) throws IOException {
         if (!Ids.isValid(id)) {
-            HttpResponses.sendEmpty(exchange, 422);
+            HttpResponses.sendEmpty(exchange, HttpConstants.UNPROCESSABLE_CONTENT);
             return;
         }
         links.delete(id);
-        HttpResponses.sendEmpty(exchange, 202);
+        HttpResponses.sendEmpty(exchange, HttpConstants.ACCEPTED);
     }
 
     private static boolean isValidLink(String link) {

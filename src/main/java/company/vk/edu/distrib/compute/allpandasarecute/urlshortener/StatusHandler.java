@@ -6,15 +6,13 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 class StatusHandler implements HttpHandler {
-    private static final String GET_METHOD = "GET";
-
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
-            if (GET_METHOD.equals(exchange.getRequestMethod())) {
-                HttpResponses.sendEmpty(exchange, 200);
+            if (HttpConstants.GET_METHOD.equals(exchange.getRequestMethod())) {
+                HttpResponses.sendEmpty(exchange, HttpConstants.OK);
             } else {
-                HttpResponses.sendEmpty(exchange, 405);
+                HttpResponses.sendEmpty(exchange, HttpConstants.METHOD_NOT_ALLOWED);
             }
         }
     }

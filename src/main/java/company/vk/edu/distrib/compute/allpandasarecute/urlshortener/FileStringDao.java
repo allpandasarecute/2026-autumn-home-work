@@ -6,10 +6,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.ReentrantLock;
 
 import company.vk.edu.distrib.compute.Dao;
 
 public class FileStringDao implements Dao<String> {
+    private final ReentrantLock lock = new ReentrantLock();
     private final Path directory;
 
     public FileStringDao(Path directory) throws IOException {
@@ -28,12 +30,22 @@ public class FileStringDao implements Dao<String> {
 
     @Override
     public void upsert(String key, String value) throws IOException {
-        Files.writeString(fileFor(key), value, StandardCharsets.UTF_8);
+        lock.lock();
+        try {
+            Files.writeString(fileFor(key), value, StandardCharsets.UTF_8);
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
     public void delete(String key) throws IOException {
-        Files.deleteIfExists(fileFor(key));
+        lock.lock();
+        try {
+            Files.deleteIfExists(fileFor(key));
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
