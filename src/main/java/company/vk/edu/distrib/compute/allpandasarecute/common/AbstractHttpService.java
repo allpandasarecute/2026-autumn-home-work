@@ -53,7 +53,9 @@ public abstract class AbstractHttpService implements HttpService {
         }
         bind();
         server.start();
-        log.info("{} is listening on port {}", getClass().getSimpleName(), port);
+        if (log.isInfoEnabled()) {
+            log.info("{} is listening on port {}", getClass().getSimpleName(), port);
+        }
     }
 
     @Override
@@ -64,7 +66,9 @@ public abstract class AbstractHttpService implements HttpService {
         stopped.set(true);
         server.stop(1);
         executor.shutdownNow();
-        log.info("{} on port {} is stopped", getClass().getSimpleName(), port);
+        if (log.isInfoEnabled()) {
+            log.info("{} on port {} is stopped", getClass().getSimpleName(), port);
+        }
     }
 
     private void bind() {
